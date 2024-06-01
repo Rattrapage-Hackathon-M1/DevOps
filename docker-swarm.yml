@@ -1,0 +1,103 @@
+services:
+  nginx:
+    image: nginx:1.25.5-alpine-slim
+    ports:
+      - "8000:80"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - "./nginx/nginx.conf:/etc/nginx/conf.d/default.conf"
+
+  auth:
+    image: ghcr.io/rattrapage-hackathon-m1/authentification:v1.1.7
+    ports:
+      - 8080:8080
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_auth:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=1234
+    depends_on:
+      - postgres_auth
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  postgres_auth:
+    container_name: postgres_auth
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: postgres
+    ports:
+      - 5432:5432
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  api-crud:
+    image: ghcr.io/rattrapage-hackathon-m1/api-crud:v1.2.8
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_crud:5432/crud
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=1234
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - postgres_crud
+
+  postgres_crud:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: crud
+    ports:
+      - 5433:5432
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  front:
+    image: ghcr.io/rattrapage-hackathon-m1/frontend:v0.0.1
+    ports:
+      - "5173:5173"
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_USERS_AUTO_ASSIGN_ORG=true
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Viewer
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE_ORG_NAME=Main Org.
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE_ORG_ID=1
+    depends_on:
+      - prometheus
