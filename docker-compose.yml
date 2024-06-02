@@ -9,25 +9,25 @@ services:
       POSTGRES_DB: postgres
     ports:
       - 5432:5432
+    networks:
+      - hackathon
+
+  auth:
+    image: ghcr.io/rattrapage-hackathon-m1/authentification:v1.1.7
+    ports:
+      - 8001:8080
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_auth:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=1234
+    depends_on:
+      - postgres_auth
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
-
-  auth:
-      image: ghcr.io/rattrapage-hackathon-m1/authentification:v1.1.7
-      ports:
-        - 8080:8080
-      environment:
-        - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_auth:5432/postgres
-        - SPRING_DATASOURCE_USERNAME=postgres
-        - SPRING_DATASOURCE_PASSWORD=1234
-      depends_on:
-        - postgres_auth
-      deploy:
-        replicas: 1
-        restart_policy:
-          condition: on-failure
+    networks:
+      - hackathon
 
   postgres_crud:
     image: postgres:latest
@@ -37,10 +37,8 @@ services:
       POSTGRES_DB: crud
     ports:
       - 5433:5432
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
+    networks:
+      - hackathon
 
   api-crud:
     image: ghcr.io/rattrapage-hackathon-m1/api-crud:v1.2.8
@@ -54,6 +52,8 @@ services:
         condition: on-failure
     depends_on:
       - postgres_crud
+    networks:
+      - hackathon
 
   nginx:
     image: nginx:1.25.5-alpine-slim
@@ -61,6 +61,8 @@ services:
       - 8000:80
     volumes:
       - "./nginx/nginx.conf:/etc/nginx/conf.d/default.conf"
+    networks:
+      - hackathon
 
   front:
     image: ghcr.io/rattrapage-hackathon-m1/frontend:v0.0.1
@@ -70,3 +72,9 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+    networks:
+      - hackathon
+
+networks:
+  hackathon:
+    driver: bridge
